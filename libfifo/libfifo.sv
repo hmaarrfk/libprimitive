@@ -1,8 +1,11 @@
+`timescale 1ns/1ns 
+
 typedef struct {
 	logic empty;
 	logic almostEmpty;
 	logic full;
 	logic almostFull;
+	logic valid;
 } fillStatus;
 
 interface fifoConnect #(
@@ -23,7 +26,11 @@ interface fifoConnect #(
 	logic read;
 	logic write;
 	
-	
+	task idle();
+		datain = 0;
+		read = 0;
+		write = 0;
+	endtask
 
 	modport core(
 		input  datain,
@@ -42,6 +49,7 @@ interface fifoConnect #(
 		output read,
 		output write
 	);
+	
 endinterface
 
 //TODO: support non power of two: i.e. counters have to wrap.
@@ -59,53 +67,37 @@ module fifo # (
 	);
 
 	localparam DEPTHBITS             = $clog2(DEPTH);
-	localparam DEPTHISTRUEPOWEROFTWO = 1; //FIXME: this should be calculated
 	localparam FILLBITS              = $clog2(DEPTH+1);
 
-	reg [WIDTH-1:0] memory[DEPTH-1:0];
+	logic [WIDTH-1:0] memory[DEPTH-1:0];
 
-	logic [FILLBITS-1:0] fill;
-	reg   [FILLBITS-1:0] fillReg;
+	logic [FILLBITS-1:0] fill_comb;
+	logic [FILLBITS-1:0] fill_reg;
 
 	//endIndex, points behind the end
-	logic [DEPTHBITS-(DEPTHISTRUEPOWEROFTWO!=0?1:0):0] endIndex;
-	logic [DEPTHBITS-(DEPTHISTRUEPOWEROFTWO!=0?1:0):0] beginIndex;
-	logic [DEPTHBITS-(DEPTHISTRUEPOWEROFTWO!=0?1:0):0] current;
+	logic [FILLBITS-1:0] endIndex_comb;
+	logic [FILLBITS-1:0] endIndex_reg;
+	logic [FILLBITS-1:0] beginIndex_comb;
+	logic [FILLBITS-1:0] beginIndex_reg;
+	logic [FILLBITS-1:0] current_comb;
+	logic [FILLBITS-1:0] current_reg;
 
-	assign link.fillLevel            = fillReg;
-
-	//RESET
-	always @(posedge clk) begin
-		if(reset) begin
-			endIndex   <= 0;
-			beginIndex <= 0;
-			current    <= 0;
-			fillReg    <= 0;
-		end
-	end
+	logic [WIDTH-1:0] readData;
 
 	//UPDATE FILL
-	always @(posedge clk) begin
-		if(!reset) begin
-			fill = fillReg;
-			if(link.read && link.write) begin
-			end else if(link.read && fillReg != 0 && !circular) begin
-				fill = fillReg - 1;
-			end else if(link.write && fillReg != DEPTH) begin
-				fill = fillReg + 1;
-			end
-
-			fillReg          <= fill;
-			link.fillStatus.empty       <= fillReg == 0;
-			link.fillStatus.full        <= fillReg == DEPTH;
-
-			link.fillStatus.almostEmpty <= fillReg <= TRIGGERALMOSTEMPTY;
-			link.fillStatus.almostFull  <= fillReg >= DEPTH-TRIGGERALMOSTFULL;
+	always_comb begin : UPDATE_FILL
+		fill_comb = fill_reg;
+		
+		if(link.read && link.write && fill_reg) begin
+		end else if(link.write && fill_reg != DEPTH) begin
+			fill_comb = fill_reg + 1;
+		end else if(link.read && fill_reg != 0 && !circular) begin
+			fill_comb = fill_reg - 1;
 		end
 	end
 
 	//READ
-	always @(posedge clk) begin
+/*	always @(posedge clk) begin
 		if(link.read && fillReg && !reset) begin
 			current      <= current + 1;
 			
@@ -126,15 +118,74 @@ module fifo # (
 		end
 
 	end
+*/
 
-	//WRITE
-	always @(posedge clk) begin
-		if(link.write && !(!fill && link.read) && !reset) begin
-			memory[endIndex] <= link.datain;
-			endIndex         <= endIndex + 1;
+	always_comb begin : READ
+		beginIndex_comb = beginIndex_reg;
+		current_comb    = current_reg;
+		
+		if(link.read && fill_reg && !reset) begin
+			current_comb      = current_reg + 1;
+			
+			if(circular) begin
+				if(current_reg+1 == endIndex_reg) begin
+					current_comb = beginIndex_reg;
+				end
+			end else begin
+				beginIndex_comb = beginIndex_reg + 1;
+			end
+			
 		end
 	end
 
+	always_comb begin : WRITE
+		if(link.write) begin //TODO: fix synchronous read?/what if read is retracted: !(!fill_comb && link.read) && 
+			endIndex_comb        = endIndex_reg + 1;
+		end else begin
+			endIndex_comb        = endIndex_reg;
+		end
+	end
 
+	always_ff @(posedge clk) begin : REGISTERS
+		if(reset) begin
+			endIndex_reg          <= 0;
+			beginIndex_reg        <= 0;
+			current_reg           <= 0;
+			fill_reg              <= 0;
+			
+			link.fillStatus.empty       <= 1;
+			link.fillStatus.full        <= 0;
+
+			link.fillStatus.almostEmpty <= 0 <= TRIGGERALMOSTEMPTY;
+			link.fillStatus.almostFull  <= 0 >= DEPTH-TRIGGERALMOSTFULL;
+			
+			link.fillLevel              <= 0;
+			link.fillStatus.valid <= 0;
+		end else begin
+			if(link.write) begin
+				memory[endIndex_reg] <= link.datain;
+			end
+			
+			endIndex_reg   <= endIndex_comb;
+			beginIndex_reg <= beginIndex_comb;
+			fill_reg       <= fill_comb;
+			current_reg    <= current_comb;
+			
+			link.fillStatus.empty       <= fill_comb == 0;
+			link.fillStatus.full        <= fill_comb == DEPTH;
+
+			link.fillStatus.almostEmpty <= fill_comb <= TRIGGERALMOSTEMPTY;
+			link.fillStatus.almostFull  <= fill_comb >= DEPTH-TRIGGERALMOSTFULL;
+			
+			link.fillLevel              <= fill_comb;  //should be an alias of fill_reg
+			link.fillStatus.valid <= | fill_comb || link.write;
+		end
+		
+		if(fill_reg[$left(fill_reg):1]==0 && (!fill_reg[0] || link.read)) begin //first word fall through
+			link.dataout <= link.datain;
+		end else begin
+			link.dataout <= memory[current_comb];
+		end
+	end
 
 endmodule
