@@ -75,14 +75,16 @@ module fifo # (
 	logic [FILLBITS-1:0] fill_reg;
 
 	//endIndex, points behind the end
-	logic [FILLBITS-1:0] endIndex_comb;
-	logic [FILLBITS-1:0] endIndex_reg;
-	logic [FILLBITS-1:0] beginIndex_comb;
-	logic [FILLBITS-1:0] beginIndex_reg;
-	logic [FILLBITS-1:0] current_comb;
-	logic [FILLBITS-1:0] current_reg;
+	logic [DEPTHBITS-1:0] endIndex_comb;
+	logic [DEPTHBITS-1:0] endIndex_reg;
+	logic [DEPTHBITS-1:0] beginIndex_comb;
+	logic [DEPTHBITS-1:0] beginIndex_reg;
+	logic [DEPTHBITS-1:0] current_comb;
+	logic [DEPTHBITS-1:0] current_reg;
 
 	logic [WIDTH-1:0] readData;
+
+	assign link.fillLevel = fill_reg;
 
 	//UPDATE FILL
 	always_comb begin : UPDATE_FILL
@@ -95,30 +97,6 @@ module fifo # (
 			fill_comb = fill_reg - 1;
 		end
 	end
-
-	//READ
-/*	always @(posedge clk) begin
-		if(link.read && fillReg && !reset) begin
-			current      <= current + 1;
-			
-			if(circular) begin
-				if(current+1 == endIndex) begin
-					current <= beginIndex;
-				end
-			end else begin
-				beginIndex <= beginIndex + 1;
-			end
-			
-		end
-
-		if(fillReg) begin
-			link.dataout <= memory[current];
-		end else begin
-			link.dataout <= link.datain;
-		end
-
-	end
-*/
 
 	always_comb begin : READ
 		beginIndex_comb = beginIndex_reg;
@@ -159,7 +137,6 @@ module fifo # (
 			link.fillStatus.almostEmpty <= 0 <= TRIGGERALMOSTEMPTY;
 			link.fillStatus.almostFull  <= 0 >= DEPTH-TRIGGERALMOSTFULL;
 			
-			link.fillLevel              <= 0;
 			link.fillStatus.valid <= 0;
 		end else begin
 			if(link.write) begin
@@ -177,7 +154,6 @@ module fifo # (
 			link.fillStatus.almostEmpty <= fill_comb <= TRIGGERALMOSTEMPTY;
 			link.fillStatus.almostFull  <= fill_comb >= DEPTH-TRIGGERALMOSTFULL;
 			
-			link.fillLevel              <= fill_comb;  //should be an alias of fill_reg
 			link.fillStatus.valid <= | fill_comb || link.write;
 		end
 		
