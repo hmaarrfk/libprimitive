@@ -5,7 +5,7 @@ module testbench();
 	
 	reg circular;
 	
-	fifoConnect fifo();
+	fifoConnect #(.DEPTH(4)) fifo();
 	
 	always  #5  clk = ~clk;
 	
@@ -70,7 +70,7 @@ module testbench();
 	end
 	
 	//fifo dut();
-	fifo dut(
+	fifo #(.DEPTH(2)) dut(
 		.clk(clk),
 		.reset(reset),
 		.circular(circular),
