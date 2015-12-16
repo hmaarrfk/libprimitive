@@ -18,7 +18,7 @@ interface rotatorConnect #(
 
 	logic [INPUTWIDTH-1:0]  dataIn;
 	logic [OUTPUTWIDTH-1:0] dataOut;
-	logic [$clog2($ceil(WIDEST_PORT/SHIFTBITS_PER_STEP))-1:0] rotationRight;
+	logic [$clog2(WIDEST_PORT/SHIFTBITS_PER_STEP)-1:0] rotationRight;
 
 	modport core (
 		input  rotationRight,
