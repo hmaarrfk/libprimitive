@@ -145,13 +145,26 @@ module fifo # (
 			fill_reg       <= fill_comb;
 			current_reg    <= current_comb;
 		end
-		
-		if(fill_reg[$left(fill_reg):1]==0 && (!fill_reg[0] || link.read)) begin //first word fall through
-			link.dataout <= link.datain;
-		end else begin
-			link.dataout <= memory[current_comb];
+	end
+	
+	generate if(DEPTH>1) begin
+		always_ff @(posedge clk) begin : DATAOUT_REGISTER
+			if(fill_reg[$left(fill_reg):1]==0 && (!fill_reg[0] || link.read)) begin //first word fall through
+				link.dataout <= link.datain;
+			end else begin
+				link.dataout <= memory[current_comb];
+			end
+		end
+	end else begin
+		always_ff @(posedge clk) begin : DATAOUT_REGISTER
+			if(!fill_reg[0] || link.read) begin //first word fall through
+				link.dataout <= link.datain;
+			end else begin
+				link.dataout <= memory[current_comb];
+			end
 		end
 	end
+	endgenerate
 	
 	generate if(OUTPUTS & FIFO_VALID) begin
 		always_ff @(posedge clk) begin : VALID
