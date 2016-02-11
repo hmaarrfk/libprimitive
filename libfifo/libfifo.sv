@@ -94,10 +94,9 @@ module fifo # (
 	always_comb begin : UPDATE_FILL
 		fill_comb = fill_reg;
 		//FIXME: do we fuck ourselves if we have fallthrough? i.e. we increase the count and it stays up. => we read a stale value twice.
-		if(link.read && link.write && fill_reg) begin
-		end else if(link.write && fill_reg != DEPTH) begin
+		if(link.write && (!link.read || circular) && fill_reg != DEPTH) begin
 			fill_comb = fill_reg + 1;
-		end else if(link.read && fill_reg != 0 && !circular) begin
+		end else if(link.read && !link.write && fill_reg != 0 && !circular) begin
 			fill_comb = fill_reg - 1;
 		end
 		

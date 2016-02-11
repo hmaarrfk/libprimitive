@@ -15,7 +15,7 @@ module testbench();
 		circular <= 1'b0;
 		fifo.read   <= 1'b0;
 		fifo.write  <= 1'b0;		
-		#1;
+		#5;
 		#10;
 		reset <= 1'b0;
 		#10;
@@ -77,7 +77,7 @@ module testbench();
 	
 	//fifo dut();
 	fifo #(
-		.DEPTH(2),
+		.DEPTH(4),
 		.FIRSTWORD_FALLTHROUGH(1)
 	) dut(
 		.clk(clk),
