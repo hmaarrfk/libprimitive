@@ -23,8 +23,14 @@ module testbench();
 		fifo.read  <= 1'b1;
 		fifo.datain <= 32'b1001;
 		#10;
+		
+		fifo.write <= 1'b0;
+		
 		fifo.datain <= 32'b1;
 		#10;
+		
+		#30;
+		
 		fifo.write  <= 1'b0;
 		fifo.datain <= 32'b10;
 		#10;
@@ -70,7 +76,10 @@ module testbench();
 	end
 	
 	//fifo dut();
-	fifo #(.DEPTH(2)) dut(
+	fifo #(
+		.DEPTH(2),
+		.FIRSTWORD_FALLTHROUGH(1)
+	) dut(
 		.clk(clk),
 		.reset(reset),
 		.circular(circular),

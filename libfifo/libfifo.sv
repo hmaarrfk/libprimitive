@@ -62,7 +62,8 @@ module fifo # (
 		parameter fifoOutputEnableFlags OUTPUTS = FIFO_VALID | FIFO_EMPTY | FIFO_ALMOST_EMPTY | FIFO_FULL | FIFO_ALMOST_FULL,
 		parameter int TRIGGERALMOSTFULL  = 1, //generate full if X elements are free
 		//generate almost empty if less than elements are there
-		parameter int TRIGGERALMOSTEMPTY = 1
+		parameter int TRIGGERALMOSTEMPTY = 1,
+		parameter logic FIRSTWORD_FALLTHROUGH = 1 //TODO: check the counter works for this
 	)(
 		input logic clk,
 		input logic reset,
@@ -86,13 +87,13 @@ module fifo # (
 	logic [DEPTHBITS-1:0] current_comb;
 	logic [DEPTHBITS-1:0] current_reg;
 
-	logic [WIDTH-1:0] readData;
-
 	assign link.fillLevel = fill_reg;
+	
+	//TODO: add 0 size fifo?
 
 	always_comb begin : UPDATE_FILL
 		fill_comb = fill_reg;
-		
+		//FIXME: do we fuck ourselves if we have fallthrough? i.e. we increase the count and it stays up. => we read a stale value twice.
 		if(link.read && link.write && fill_reg) begin
 		end else if(link.write && fill_reg != DEPTH) begin
 			fill_comb = fill_reg + 1;
@@ -122,7 +123,7 @@ module fifo # (
 	end
 
 	always_comb begin : WRITE
-		if(link.write && fill_reg != DEPTH) begin //TODO protect against overwriting indexes
+		if(link.write && fill_reg != DEPTH) begin //TODO protect against overwriting indexes?
 			endIndex_comb        = endIndex_reg + 1;
 		end else begin
 			endIndex_comb        = endIndex_reg;
@@ -149,7 +150,7 @@ module fifo # (
 	
 	generate if(DEPTH>1) begin
 		always_ff @(posedge clk) begin : DATAOUT_REGISTER
-			if(fill_reg[$left(fill_reg):1]==0 && (!fill_reg[0] || link.read)) begin //first word fall through
+			if(fill_reg[$left(fill_reg):1]==0 && (!fill_reg[0] || link.read) && FIRSTWORD_FALLTHROUGH) begin //first word fall through
 				link.dataout <= link.datain;
 			end else begin
 				link.dataout <= memory[current_comb];
@@ -157,7 +158,7 @@ module fifo # (
 		end
 	end else begin
 		always_ff @(posedge clk) begin : DATAOUT_REGISTER
-			if(!fill_reg[0] || link.read) begin //first word fall through
+			if((!fill_reg[0] || link.read) && FIRSTWORD_FALLTHROUGH) begin //first word fall through
 				link.dataout <= link.datain;
 			end else begin
 				link.dataout <= memory[current_comb];
