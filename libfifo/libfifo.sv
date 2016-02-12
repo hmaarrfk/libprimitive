@@ -104,14 +104,16 @@ module fifo # (
 	end
 
 	always_comb begin : READ
+		logic [DEPTHBITS-1:0] nextIndex = current_reg + 1; 
+		
 		beginIndex_comb = beginIndex_reg;
 		current_comb    = current_reg;
 		
-		if(link.read && fill_reg && !reset) begin
+		if(link.read && (fill_reg || link.write) && !reset) begin
 			current_comb      = current_reg + 1;
 			
 			if(circular) begin
-				if(current_reg+1 == endIndex_reg) begin
+				if(nextIndex == endIndex_reg) begin
 					current_comb = beginIndex_reg;
 				end
 			end else begin
@@ -156,11 +158,32 @@ module fifo # (
 			end
 		end
 	end else begin
+		logic [WIDTH-1:0] fifo_reg;
+		
 		always_ff @(posedge clk) begin : DATAOUT_REGISTER
-			if((!fill_reg[0] || link.read) && FIRSTWORD_FALLTHROUGH) begin //first word fall through
-				link.dataout <= link.datain;
-			end else begin
-				link.dataout <= memory[current_comb];
+			//Comment Out: preperation for non power of two fifo
+			//if(!(DEPTH&(DEPTH-1))) begin
+				logic [DEPTHBITS-1:0] preloadIndex = current_comb + 1;
+			
+				if(circular && preloadIndex == endIndex_reg) begin
+					preloadIndex = beginIndex_reg;
+				end
+			
+				fifo_reg <= memory[preloadIndex];
+			/*end else begin
+				if(current_comb+1 == DEPTH) begin
+					fifo_reg <= memory[0];
+				end else begin
+					fifo_reg <= memory[current_comb+1];
+				end
+			end*/
+			
+			if(link.read) begin
+				if(!fill_reg && FIRSTWORD_FALLTHROUGH) begin //first word fall through
+					link.dataout <= link.datain;
+				end else begin
+					link.dataout <= fifo_reg; //memory[current_comb];
+				end
 			end
 		end
 	end
