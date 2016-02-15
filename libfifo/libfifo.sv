@@ -74,6 +74,7 @@ module fifo # (
 	localparam DEPTHBITS             = $clog2(DEPTH);
 	localparam FILLBITS              = $clog2(DEPTH+1);
 
+	logic [WIDTH-1:0] memoryRegister;    //for the special case of DEPTH==1 to suppress warnings
 	logic [WIDTH-1:0] memory[DEPTH-1:0];
 
 	logic [FILLBITS-1:0] fill_comb;
@@ -84,8 +85,9 @@ module fifo # (
 	logic [DEPTHBITS-1:0] endIndex_reg;
 	logic [DEPTHBITS-1:0] beginIndex_comb;
 	logic [DEPTHBITS-1:0] beginIndex_reg;
-	logic [DEPTHBITS-1:0] current_comb;
-	logic [DEPTHBITS-1:0] current_reg;
+	logic [DEPTHBITS-1:0] next_comb;
+	logic [DEPTHBITS-1:0] next_reg;
+	logic [DEPTHBITS-1:0] nextCorrected_comb;
 
 	assign link.fillLevel = fill_reg;
 	
@@ -104,23 +106,25 @@ module fifo # (
 	end
 
 	always_comb begin : READ
-		logic [DEPTHBITS-1:0] nextIndex = current_reg + 1; 
-		
 		beginIndex_comb = beginIndex_reg;
-		current_comb    = current_reg;
 		
 		if(link.read && (fill_reg || link.write) && !reset) begin
-			current_comb      = current_reg + 1;
 			
-			if(circular) begin
-				if(nextIndex == endIndex_reg) begin
-					current_comb = beginIndex_reg;
-				end
-			end else begin
+			if(!circular) begin
 				beginIndex_comb = beginIndex_reg + 1;
 			end
 			
 		end
+		
+		if(link.read && (fill_reg || link.write)) begin
+			next_comb = next_reg + 1;
+		end else begin
+			next_comb = next_reg;
+		end
+		
+		/*if(circular && next_comb == endIndex_reg) begin //write read might screw this over...
+			next_comb = beginIndex_reg;
+		end*/
 	end
 
 	always_comb begin : WRITE
@@ -135,17 +139,21 @@ module fifo # (
 		if(reset) begin
 			endIndex_reg          <= 0;
 			beginIndex_reg        <= 0;
-			current_reg           <= 0;
+			next_reg              <= 0;
 			fill_reg              <= 0;
 		end else begin
 			if(link.write) begin
-				memory[endIndex_reg] <= link.datain;
+				if(DEPTH > 1) begin
+					memory[endIndex_reg] <= link.datain;
+				end else begin
+					memoryRegister       <= link.datain;
+				end
 			end
 			
 			endIndex_reg   <= endIndex_comb;
 			beginIndex_reg <= beginIndex_comb;
+			next_reg       <= next_comb;
 			fill_reg       <= fill_comb;
-			current_reg    <= current_comb;
 		end
 	end
 	
@@ -154,35 +162,23 @@ module fifo # (
 			if(fill_reg[$left(fill_reg):1]==0 && (!fill_reg[0] || link.read) && FIRSTWORD_FALLTHROUGH) begin //first word fall through
 				link.dataout <= link.datain;
 			end else begin
-				link.dataout <= memory[current_comb];
+				link.dataout <= memory[next_reg];
 			end
 		end
 	end else begin
-		logic [WIDTH-1:0] fifo_reg;
-		
 		always_ff @(posedge clk) begin : DATAOUT_REGISTER
-			//Comment Out: preperation for non power of two fifo
-			//if(!(DEPTH&(DEPTH-1))) begin
-				logic [DEPTHBITS-1:0] preloadIndex = current_comb + 1;
 			
-				if(circular && preloadIndex == endIndex_reg) begin
-					preloadIndex = beginIndex_reg;
-				end
-			
-				fifo_reg <= memory[preloadIndex];
-			/*end else begin
-				if(current_comb+1 == DEPTH) begin
-					fifo_reg <= memory[0];
-				end else begin
-					fifo_reg <= memory[current_comb+1];
-				end
-			end*/
+			if(circular && next_reg == endIndex_reg) begin //write read might screw this over by one missed loop...
+				nextCorrected_comb = beginIndex_reg;
+			end else begin
+				nextCorrected_comb = next_reg;
+			end
 			
 			if(link.read) begin
 				if(!fill_reg && FIRSTWORD_FALLTHROUGH) begin //first word fall through
 					link.dataout <= link.datain;
 				end else begin
-					link.dataout <= fifo_reg; //memory[current_comb];
+					link.dataout <= memoryRegister;
 				end
 			end
 		end
