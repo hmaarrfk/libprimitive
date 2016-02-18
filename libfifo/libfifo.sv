@@ -6,6 +6,8 @@ typedef struct {
 	logic full;
 	logic almostFull;
 	logic valid;
+	logic wrap;
+	logic circularHalfway;
 } fillStatus;
 
 interface fifoConnect #(
@@ -52,8 +54,8 @@ interface fifoConnect #(
 	
 endinterface
 
-typedef logic [4:0] fifoOutputEnableFlags;
-enum fifoOutputEnableFlags { FIFO_NONE = 5'b00000, FIFO_VALID = 5'b00001, FIFO_EMPTY = 5'b00010, FIFO_ALMOST_EMPTY = 5'b00100, FIFO_FULL = 5'b01000, FIFO_ALMOST_FULL = 5'b10000} fifoOutputEnableFlags_constants;
+typedef logic [6:0] fifoOutputEnableFlags;
+enum fifoOutputEnableFlags { FIFO_NONE = 7'b0000000, FIFO_VALID = 7'b0000001, FIFO_EMPTY = 7'b0000010, FIFO_ALMOST_EMPTY = 7'b0000100, FIFO_FULL = 7'b0001000, FIFO_ALMOST_FULL = 7'b0010000, FIFO_WRAP_INDICATOR = 7'b0100000, FIFO_CIRCULAR_HALFWAY = 7'b1000000} fifoOutputEnableFlags_constants;
 
 //TODO: support non power of two: i.e. counters have to wrap.
 module fifo # (
@@ -63,7 +65,8 @@ module fifo # (
 		parameter int TRIGGERALMOSTFULL  = 1, //generate full if X elements are free
 		//generate almost empty if less than elements are there
 		parameter int TRIGGERALMOSTEMPTY = 1,
-		parameter logic FIRSTWORD_FALLTHROUGH = 1 //TODO: check the counter works for this
+		parameter logic FIRSTWORD_FALLTHROUGH = 1, //TODO: check the counter works for this
+		parameter int CIRCULAR_HALFWAY   = DEPTH >> 1 //generate Halfway marker if more than this many entries have been read
 	)(
 		input logic clk,
 		input logic reset,
@@ -159,21 +162,20 @@ module fifo # (
 	
 	generate if(DEPTH>1) begin
 		always_ff @(posedge clk) begin : DATAOUT_REGISTER
-			if(fill_reg[$left(fill_reg):1]==0 && (!fill_reg[0] || link.read) && FIRSTWORD_FALLTHROUGH) begin //first word fall through
-				link.dataout <= link.datain;
-			end else begin
-				link.dataout <= memory[next_reg];
-			end
-		end
-	end else begin
-		always_ff @(posedge clk) begin : DATAOUT_REGISTER
-			
 			if(circular && next_reg == endIndex_reg) begin //write read might screw this over by one missed loop...
 				nextCorrected_comb = beginIndex_reg;
 			end else begin
 				nextCorrected_comb = next_reg;
 			end
 			
+			if(fill_reg[$left(fill_reg):1]==0 && (!fill_reg[0] || link.read) && FIRSTWORD_FALLTHROUGH) begin //first word fall through
+				link.dataout <= link.datain;
+			end else begin
+				link.dataout <= memory[nextCorrected_comb];
+			end
+		end
+	end else begin
+		always_ff @(posedge clk) begin : DATAOUT_REGISTER
 			if(link.read) begin
 				if(!fill_reg && FIRSTWORD_FALLTHROUGH) begin //first word fall through
 					link.dataout <= link.datain;
@@ -247,6 +249,32 @@ module fifo # (
 		end
 	end else begin
 		assign link.fillStatus.almostFull = 0;
+	end
+	endgenerate
+	
+	generate if(OUTPUTS & FIFO_WRAP_INDICATOR) begin
+		always_ff @(posedge clk) begin : WRAP
+			if(reset) begin
+				link.fillStatus.wrap <= 0;
+			end else begin
+				link.fillStatus.wrap <= (circular && next_reg == endIndex_reg) || (!circular && next_reg == 0);
+			end
+		end
+	end else begin
+		assign link.fillStatus.wrap = 0;
+	end
+	endgenerate
+	
+	generate if(OUTPUTS & FIFO_CIRCULAR_HALFWAY) begin
+		always_ff @(posedge clk) begin : WRAP
+			if(reset) begin
+				link.fillStatus.circularHalfway <= 0;
+			end else begin
+				link.fillStatus.circularHalfway <= nextCorrected_comb == beginIndex_reg + FIFO_CIRCULAR_HALFWAY;
+			end
+		end
+	end else begin
+		assign link.fillStatus.circularHalfway = 0;
 	end
 	endgenerate
 
