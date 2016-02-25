@@ -1,23 +1,58 @@
 *** Start analyzing build configuration ***
 *** List of included argument files ***
     Build configuration file:  /home/ted/srcFPGA/libprimitive/libpipeline/.dvt/default.build
-*** Done analyzing build configuration [5 ms] ***
+*** Done analyzing build configuration [1 ms] ***
 *** Start SystemVerilog build ***
-*** Done parsing [LT 0.0 ms, PT 0.0 ms, SGT 0%, UGT 0%] ***
-*** Total number of lines [0] ***
+*** Loading top files ***
+Loading (1) /home/ted/srcFPGA/libprimitive/libpipeline/pipeline.sv ...
+Done /home/ted/srcFPGA/libprimitive/libpipeline/pipeline.sv [9 ms, 104 lines, SystemVerilog_2012] ...
+*** Done parsing [LT 3.0 ms, PT 7.0 ms, SGT 12%, UGT 12%] ***
+*** Total number of lines [104] ***
 Performing post full build actions ...
 Performing post full build step 1 (SRI) [0 ms] ...
 Performing post full build step 2 (RI) [0 ms] ...
 Performing post full build step 3 (RCP) [0 ms] ...
-*** Done SystemVerilog build [8 ms] ***
+*** Done SystemVerilog build [10 ms] ***
 *** Start mixed mode extension build ***
 Performing mixed post full build step 1 (Verilog - RI) [0 ms] ...
 Performing mixed post full build step 2 (Verilog - RC) [0 ms] ...
-Performing mixed post full build step 3 (Verilog - RNA) [0 ms] ...
+Performing mixed post full build step 3 (Verilog - RNA) [1 ms] ...
 Performing mixed post full build step 4 (Verilog - RPC) [0 ms] ...
-Performing mixed post full build step 5 (Verilog - RD) [1 ms] ...
-Performing mixed post full build step 6 (Verilog - FSC) [0 ms] ...
+Performing mixed post full build step 5 (Verilog - RD) [0 ms] ...
+Performing mixed post full build step 6 (Verilog - FSC) [51 ms] ...
 Performing mixed post full build step 7 (Verilog - US) [1 ms] ...
-*** Done mixed mode extension build [1s.068ms] ***
+*** Error: UNDECLARED_IDENTIFIER: Identifier 'data' is not a member of 'sink'
+    at line 36 in /home/ted/srcFPGA/libprimitive/libpipeline/pipeline.sv
+*** Error: UNDECLARED_IDENTIFIER: Identifier 'valid' is not a member of 'sink'
+    at line 37 in /home/ted/srcFPGA/libprimitive/libpipeline/pipeline.sv
+*** Error: UNDECLARED_IDENTIFIER: Identifier 'ready' is not a member of 'sink'
+    at line 38 in /home/ted/srcFPGA/libprimitive/libpipeline/pipeline.sv
+*** Error: UNDECLARED_IDENTIFIER: Identifier 'data' is not a member of 'source'
+    at line 40 in /home/ted/srcFPGA/libprimitive/libpipeline/pipeline.sv
+*** Error: UNDECLARED_IDENTIFIER: Identifier 'valid' is not a member of 'source'
+    at line 41 in /home/ted/srcFPGA/libprimitive/libpipeline/pipeline.sv
+*** Error: UNDECLARED_IDENTIFIER: Identifier 'ready' is not a member of 'source'
+    at line 42 in /home/ted/srcFPGA/libprimitive/libpipeline/pipeline.sv
+*** Error: NON_EXISTING_TYPE: Non existing type 'pipelineConnect.pipeline'
+    at line 29 in /home/ted/srcFPGA/libprimitive/libpipeline/pipeline.sv
+*** Error: NON_EXISTING_TYPE: Non existing type 'pipelineConnect.source'
+    at line 30 in /home/ted/srcFPGA/libprimitive/libpipeline/pipeline.sv
+*** Error: UNDECLARED_IDENTIFIER: Identifier 'valid' is not a member of 'sink'
+    at line 77 in /home/ted/srcFPGA/libprimitive/libpipeline/pipeline.sv
+*** Error: UNDECLARED_IDENTIFIER: Identifier 'data' is not a member of 'sink'
+    at line 78 in /home/ted/srcFPGA/libprimitive/libpipeline/pipeline.sv
+*** Error: NON_EXISTING_TYPE: Non existing type 'pipelineConnect.pipeline'
+    at line 65 in /home/ted/srcFPGA/libprimitive/libpipeline/pipeline.sv
+*** Error: NON_EXISTING_TYPE: Non existing type 'pipelineConnect.source'
+    at line 66 in /home/ted/srcFPGA/libprimitive/libpipeline/pipeline.sv
+*** Error: UNDECLARED_IDENTIFIER: Identifier 'ready' is not a member of 'source'
+    at line 88 in /home/ted/srcFPGA/libprimitive/libpipeline/pipeline.sv
+*** Error: UNDECLARED_IDENTIFIER: Identifier 'ready' is not a member of 'sink'
+    at line 92 in /home/ted/srcFPGA/libprimitive/libpipeline/pipeline.sv
+*** Error: UNDECLARED_IDENTIFIER: Identifier 'valid' is not a member of 'source'
+    at line 93 in /home/ted/srcFPGA/libprimitive/libpipeline/pipeline.sv
+*** Error: UNDECLARED_IDENTIFIER: Identifier 'data' is not a member of 'source'
+    at line 94 in /home/ted/srcFPGA/libprimitive/libpipeline/pipeline.sv
+*** Done mixed mode extension build [389 ms] ***
 *** Start adding/validating the DVT Auto-Linked resources ***
 *** Done adding/validating the DVT Auto-Linked resources [0 ms] ***

@@ -30,8 +30,10 @@ endinterface
 module barrelShifterRight #(
 	parameter int INPUTWIDTH = 32,
 	parameter int OUTPUTWIDTH = INPUTWIDTH,
-	parameter int SHIFTBITS_PER_STEP = 1
+	parameter int SHIFTBITS_PER_STEP = 1,
+	parameter logic OUTPUT_REGISTER = 0
 )(
+	input logic clk,
 	rotatorConnect.core link
 );
 
@@ -41,7 +43,20 @@ localparam STAGES      = $clog2(WIDEST_PORT/SHIFTBITS_PER_STEP);
 logic [WIDEST_PORT-1:0] shifterStage [STAGES:0];
 
 assign shifterStage[0] = link.dataIn;
-assign link.dataOut    = shifterStage[STAGES];
+	
+generate
+if(OUTPUT_REGISTER) begin
+	logic [OUTPUTWIDTH-1:0]  dataOut_reg;
+	
+	always_ff @(posedge clk) begin : outputRegister
+		dataOut_reg <= shifterStage[STAGES];
+	end
+	
+	assign link.dataOut    = dataOut_reg;
+end else begin
+	assign link.dataOut    = shifterStage[STAGES];
+end
+endgenerate
 
 for(genvar i=0; i<STAGES; ++i) begin
 	always_comb begin : shifterStageComb

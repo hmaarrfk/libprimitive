@@ -12,3 +12,4 @@
 // +define+CHIP_LEVEL_ID=0x10   // define preprocessing symbol with value
 // -v src/source_library_file.v // specify Verilog source library file
 // -y src/lib                   // specify Verilog source library directory
+pipeline.sv

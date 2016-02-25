@@ -1,4 +1,4 @@
-interface pipelineConnect #(
+interface axiPipelineConnect #(
 	parameter int unsigned WIDTH = 32
 );
 	
@@ -20,18 +20,18 @@ modport pipeline(
 
 endinterface
 
-module pipeline #(
+module aciPipeline #(
 	parameter int unsigned STAGES = 1,
 	parameter int unsigned WIDTH = 32
 )(
 	input logic clk,	
 	input logic reset,
-	pipelineConnect.pipeline source,
-	pipelineConnect.source sink
+	axiPipelineConnect.pipeline source,
+	axiPipelineConnect.source sink
 );
 
-pipelineConnect #(.WIDTH(WIDTH)) stageSource [STAGES]();
-pipelineConnect #(.WIDTH(WIDTH)) stageSink [STAGES]();
+axiPipelineConnect #(.WIDTH(WIDTH)) stageSource [STAGES]();
+axiPipelineConnect #(.WIDTH(WIDTH)) stageSink [STAGES]();
 	
 assign sink.data  = stageSink[STAGES-1].data;
 assign sink.valid = stageSink[STAGES-1].valid;
@@ -43,7 +43,7 @@ assign source.ready = stageSource[0].ready;
 
 generate
 for(genvar i=0; i<STAGES; ++i) begin : stage
-	pipelineStage #(
+	axiPipelineStage #(
 		.WIDTH(WIDTH)
 	)
 	u_pipelineStage (
@@ -57,13 +57,13 @@ endgenerate
 
 endmodule
 
-module pipelineStage #(
+module axiPipelineStage #(
 	parameter int unsigned WIDTH = 32
 )(
 	input logic clk,	
 	input logic reset,
-	pipelineConnect.pipeline source,
-	pipelineConnect.source sink
+	axiPipelineConnect.pipeline source,
+	axiPipelineConnect.source sink
 );
 
 logic ready_comb;
