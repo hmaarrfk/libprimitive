@@ -63,8 +63,8 @@ for(genvar i=0; i<STAGES; ++i) begin
 	always_comb begin : shifterStageComb
 		if(link.rotationRight[i]) begin
 			//TODO make direction a parameter
-			//shifterStage[i+1] = {shifterStage[i][(2**i)*SHIFTBITS_PER_STEP-1:0], shifterStage[i][WIDEST_PORT-1:(2**i)*SHIFTBITS_PER_STEP]};
-			shifterStage[i+1] = {shifterStage[i][(PARTS-(2**i))*SHIFTBITS_PER_STEP-1:0], shifterStage[i][WIDEST_PORT-1:(PARTS-(2**i))*SHIFTBITS_PER_STEP]};
+			shifterStage[i+1] = {shifterStage[i][(2**i)*SHIFTBITS_PER_STEP-1:0], shifterStage[i][WIDEST_PORT-1:(2**i)*SHIFTBITS_PER_STEP]};
+			//shifterStage[i+1] = {shifterStage[i][(PARTS-(2**i))*SHIFTBITS_PER_STEP-1:0], shifterStage[i][WIDEST_PORT-1:(PARTS-(2**i))*SHIFTBITS_PER_STEP]};
 		end else begin
 			shifterStage[i+1] = shifterStage[i];
 		end
