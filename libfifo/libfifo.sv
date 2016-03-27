@@ -54,8 +54,12 @@ interface fifoConnect #(
 	
 endinterface
 
-typedef logic [6:0] fifoOutputEnableFlags;
-enum fifoOutputEnableFlags { FIFO_NONE = 7'b0000000, FIFO_VALID = 7'b0000001, FIFO_EMPTY = 7'b0000010, FIFO_ALMOST_EMPTY = 7'b0000100, FIFO_FULL = 7'b0001000, FIFO_ALMOST_FULL = 7'b0010000, FIFO_WRAP_INDICATOR = 7'b0100000, FIFO_CIRCULAR_HALFWAY = 7'b1000000} fifoOutputEnableFlags_constants;
+package fifoPkg;
+	typedef logic [6:0] fifoOutputEnableFlags;
+	enum fifoOutputEnableFlags { FIFO_NONE = 7'b0000000, FIFO_VALID = 7'b0000001, FIFO_EMPTY = 7'b0000010, FIFO_ALMOST_EMPTY = 7'b0000100, FIFO_FULL = 7'b0001000, FIFO_ALMOST_FULL = 7'b0010000, FIFO_WRAP_INDICATOR = 7'b0100000, FIFO_CIRCULAR_HALFWAY = 7'b1000000} fifoOutputEnableFlags_constants;
+endpackage
+
+import fifoPkg::*;
 
 //TODO: support non power of two: i.e. counters have to wrap.
 module fifo # (
@@ -91,6 +95,18 @@ module fifo # (
 	logic [DEPTHBITS-1:0] next_comb;
 	logic [DEPTHBITS-1:0] next_reg;
 	logic [DEPTHBITS-1:0] nextCorrected_comb;
+	
+	logic wasEmpty;
+	
+	generate
+	if(FIRSTWORD_FALLTHROUGH) begin
+		assign wasEmpty = 0;
+	end else begin
+		//always_ff @(posedge clk) begin
+		assign wasEmpty = link.fillStatus.empty;
+		//end
+	end
+	endgenerate
 
 	assign link.fillLevel = fill_reg;
 	
@@ -104,6 +120,15 @@ module fifo # (
 		end else if(link.read && !link.write && fill_reg != 0 && !circular) begin
 			fill_comb = fill_reg - 1;
 		end
+		/* Bad for timing
+		unique casez({link.read, link.write, circular, fill_reg != 0, fill_reg != DEPTH})
+			5'b01??1, 5'b?11?1:
+				fill_comb = fill_reg + 1;
+			5'b1001?:
+				fill_comb = fill_reg - 1;
+			default:
+				fill_comb = fill_reg;
+		endcase */
 		
 		//TODO: overwrite fill_comb with reset here? => would allow us to simblify the valid/full/almost_full/... generation by combine general and reset case there...
 	end
@@ -142,7 +167,7 @@ module fifo # (
 		if(reset) begin
 			endIndex_reg          <= 0;
 			beginIndex_reg        <= 0;
-			next_reg              <= 0;
+			next_reg              <= FIRSTWORD_FALLTHROUGH?1:0;
 			fill_reg              <= 0;
 		end else begin
 			if(link.write) begin
@@ -160,18 +185,27 @@ module fifo # (
 		end
 	end
 	
-	generate if(DEPTH>1) begin
-		always_ff @(posedge clk) begin : DATAOUT_REGISTER
+	generate
+	if(DEPTH>1) begin
+		always_comb begin
 			if(circular && next_reg == endIndex_reg) begin //write read might screw this over by one missed loop...
 				nextCorrected_comb = beginIndex_reg;
 			end else begin
 				nextCorrected_comb = next_reg;
 			end
-			
-			if(fill_reg[$left(fill_reg):1]==0 && (!fill_reg[0] || link.read) && FIRSTWORD_FALLTHROUGH) begin //first word fall through
-				link.dataout <= link.datain;
+		end
+		
+		always_ff @(posedge clk) begin : DATAOUT_REGISTER	
+			if(FIRSTWORD_FALLTHROUGH) begin
+				if(fill_reg[$left(fill_reg):1]==0 && (!fill_reg[0] || link.read)) begin //first word fall through
+					//FIXME: stop toggling of data if there is no write
+					link.dataout <= link.datain;
+				end else if(link.read) begin
+					link.dataout <= memory[nextCorrected_comb];
+				end
 			end else begin
-				link.dataout <= memory[nextCorrected_comb];
+				//FIXME: does not work for circular mode, with this we do not need nextCOrrected
+				link.dataout <= memory[beginIndex_comb];
 			end
 		end
 	end else begin
@@ -192,7 +226,7 @@ module fifo # (
 			if(reset) begin
 				link.fillStatus.valid <= 0;
 			end else begin
-				link.fillStatus.valid <= fill_comb || link.write;
+				link.fillStatus.valid <= (fill_comb || link.write) && !wasEmpty;
 			end
 		end
 	end else begin
@@ -200,7 +234,7 @@ module fifo # (
 	end
 	endgenerate
 	
-	generate if(OUTPUTS & FIFO_EMPTY) begin
+	generate if(OUTPUTS & FIFO_EMPTY || !FIRSTWORD_FALLTHROUGH) begin
 		always_ff @(posedge clk) begin : EMPTY
 			if(reset) begin
 				link.fillStatus.empty <= 1;
