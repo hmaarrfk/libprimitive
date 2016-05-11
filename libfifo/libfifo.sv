@@ -12,7 +12,8 @@ typedef struct {
 
 interface fifoConnect #(
 		parameter WIDTH = 32,
-		parameter DEPTH = 32
+		parameter DEPTH = 32,
+		parameter PARTS = 1
 	);
 
 	localparam ADDRESSBITS = $clog2(DEPTH);
@@ -25,8 +26,8 @@ interface fifoConnect #(
 	// filled to the TOP. For integer power of 2: fillLevelActual = {full,
 	// fillLevel}
 	logic [FILLBITS-1:0] fillLevel;
-	logic read;
-	logic write;
+	logic [PARTS-1:0] read;
+	logic [PARTS-1:0] write;
 	
 	task idle();
 		datain = 0;
@@ -304,7 +305,7 @@ module fifo # (
 			if(reset) begin
 				link.fillStatus.circularHalfway <= 0;
 			end else begin
-				link.fillStatus.circularHalfway <= nextCorrected_comb == beginIndex_reg + FIFO_CIRCULAR_HALFWAY;
+				link.fillStatus.circularHalfway <= nextCorrected_comb == beginIndex_reg + CIRCULAR_HALFWAY;
 			end
 		end
 	end else begin

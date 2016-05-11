@@ -20,15 +20,17 @@ module testbench();
 		reset <= 1'b0;
 		#10;
 		fifo.write  <= 1'b1;
-		fifo.read  <= 1'b1;
+		fifo.read  <= 1'b0;
 		fifo.datain <= 32'b1001;
 		#10;
 		
-		fifo.write <= 1'b0;
+		//fifo.write <= 1'b0;
 		
 		fifo.datain <= 32'b1;
 		#10;
-		
+		fifo.write <= 0;
+		#10;
+		fifo.read <= 1;
 		#30;
 		
 		fifo.write  <= 1'b0;
