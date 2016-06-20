@@ -1,8 +1,10 @@
+import utility::max;
+
 module oneHotDecoder #(
 	parameter int VALUES = 8
 )(
 	input  logic [VALUES-1:0] oneHotVector,
-	output logic [$clog2(VALUES)-1:0] binary
+	output logic [max($clog2(VALUES)-1, 0):0] binary
 );
 	
 	always_comb begin : decoder
