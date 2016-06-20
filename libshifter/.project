@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>librotator</name>
+	<name>libshifter</name>
 	<comment></comment>
 	<projects>
 	</projects>
@@ -14,4 +14,41 @@
 	<natures>
 		<nature>ro.amiq.vlogdt.VlogNature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>DVT Auto-Linked</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>DVT Auto-Linked/home</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>DVT Auto-Linked/home/ted</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>DVT Auto-Linked/home/ted/srcFPGA</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>DVT Auto-Linked/home/ted/srcFPGA/libprimitive</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>DVT Auto-Linked/home/ted/srcFPGA/libprimitive/utility</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>DVT Auto-Linked/home/ted/srcFPGA/libprimitive/utility/utility.sv</name>
+			<type>1</type>
+			<locationURI>DVT_PATH/home/ted/srcFPGA/libprimitive/utility/utility.sv</locationURI>
+		</link>
+	</linkedResources>
 </projectDescription>

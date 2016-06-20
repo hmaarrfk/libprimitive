@@ -1,12 +1,4 @@
-function int max(int a, int b);
-begin
-	if(b>a) begin
-		return b;
-	end else begin
-		return a;
-	end
-end
-endfunction
+import utility::max;
 
 interface rotatorConnect #(
 	parameter int INPUTWIDTH  = 32,

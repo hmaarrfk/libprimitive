@@ -14,3 +14,5 @@
 // -y src/lib                   // specify Verilog source library directory
 librotator.test.sv
 -v librotator.sv
+
+-sv ../utility/utility.sv
