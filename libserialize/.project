@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>libserialize</name>
+	<comment></comment>
+	<projects>
+	</projects>
+	<buildSpec>
+		<buildCommand>
+			<name>ro.amiq.dvt.MixedLangBuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+	</buildSpec>
+	<natures>
+		<nature>ro.amiq.dvt.dvtnature</nature>
+		<nature>ro.amiq.vlogdt.VlogNature</nature>
+		<nature>ro.amiq.vhdldt.VhdlNature</nature>
+	</natures>
+	<linkedResources>
+		<link>
+			<name>DVT Auto-Linked</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>DVT Auto-Linked/home</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>DVT Auto-Linked/home/ted</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>DVT Auto-Linked/home/ted/srcFPGA</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>DVT Auto-Linked/home/ted/srcFPGA/libprimitive</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>DVT Auto-Linked/home/ted/srcFPGA/libprimitive/utility</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>DVT Auto-Linked/home/ted/srcFPGA/libprimitive/utility/utility.vhd</name>
+			<type>1</type>
+			<locationURI>DVT_PATH/home/ted/srcFPGA/libprimitive/utility/utility.vhd</locationURI>
+		</link>
+	</linkedResources>
+</projectDescription>
