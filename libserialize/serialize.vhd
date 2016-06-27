@@ -43,7 +43,7 @@ begin
 			if rst then
 				count_reg <= (others => '0');
 				state_reg <= RUNNING;
-				valid_reg <= 0;
+				valid_reg <= '0';
 			else
 				count_reg <= count_cmb;
 				state_reg <= state_cmb;
