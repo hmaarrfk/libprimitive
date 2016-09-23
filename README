@@ -1,0 +1,8 @@
+This utility library can be used freely, and we are happy about bug reports.
+However, a word of warning is in order. Some of the functions have not been testen,
+and are therefore broken.
+
+If you want to use it, the shifter, bitdetection and fifo parts are doing fairly well in
+JetStream, so those are expected to be working, however not all configurations have been tested.
+
+Furthermore if you would like to use the VHDL utility library, please note that it is written in VHDL 2008.
