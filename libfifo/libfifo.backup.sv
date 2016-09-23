@@ -25,14 +25,11 @@ typedef struct {
 	logic full;
 	logic almostFull;
 	logic valid;
-	logic wrap;
-	logic circularHalfway;
 } fillStatus;
 
 interface fifoConnect #(
 		parameter WIDTH = 32,
-		parameter DEPTH = 32,
-		parameter PARTS = 1
+		parameter DEPTH = 32
 	);
 
 	localparam ADDRESSBITS = $clog2(DEPTH);
@@ -45,8 +42,8 @@ interface fifoConnect #(
 	// filled to the TOP. For integer power of 2: fillLevelActual = {full,
 	// fillLevel}
 	logic [FILLBITS-1:0] fillLevel;
-	logic [PARTS-1:0] read;
-	logic [PARTS-1:0] write;
+	logic read;
+	logic write;
 	
 	task idle();
 		datain = 0;
@@ -74,12 +71,8 @@ interface fifoConnect #(
 	
 endinterface
 
-package fifoPkg;
-	typedef logic [6:0] fifoOutputEnableFlags;
-	enum fifoOutputEnableFlags { FIFO_NONE = 7'b0000000, FIFO_VALID = 7'b0000001, FIFO_EMPTY = 7'b0000010, FIFO_ALMOST_EMPTY = 7'b0000100, FIFO_FULL = 7'b0001000, FIFO_ALMOST_FULL = 7'b0010000, FIFO_WRAP_INDICATOR = 7'b0100000, FIFO_CIRCULAR_HALFWAY = 7'b1000000} fifoOutputEnableFlags_constants;
-endpackage
-
-import fifoPkg::*;
+typedef logic [4:0] fifoOutputEnableFlags;
+enum fifoOutputEnableFlags { FIFO_NONE = 5'b00000, FIFO_VALID = 5'b00001, FIFO_EMPTY = 5'b00010, FIFO_ALMOST_EMPTY = 5'b00100, FIFO_FULL = 5'b01000, FIFO_ALMOST_FULL = 5'b10000} fifoOutputEnableFlags_constants;
 
 //TODO: support non power of two: i.e. counters have to wrap.
 module fifo # (
@@ -89,8 +82,7 @@ module fifo # (
 		parameter int TRIGGERALMOSTFULL  = 1, //generate full if X elements are free
 		//generate almost empty if less than elements are there
 		parameter int TRIGGERALMOSTEMPTY = 1,
-		parameter logic FIRSTWORD_FALLTHROUGH = 1, //TODO: check the counter works for this
-		parameter int CIRCULAR_HALFWAY   = DEPTH >> 1 //generate Halfway marker if more than this many entries have been read
+		parameter logic FIRSTWORD_FALLTHROUGH = 1 //TODO: check the counter works for this
 	)(
 		input logic clk,
 		input logic reset,
@@ -101,7 +93,6 @@ module fifo # (
 	localparam DEPTHBITS             = $clog2(DEPTH);
 	localparam FILLBITS              = $clog2(DEPTH+1);
 
-	logic [WIDTH-1:0] memoryRegister;    //for the special case of DEPTH==1 to suppress warnings
 	logic [WIDTH-1:0] memory[DEPTH-1:0];
 
 	logic [FILLBITS-1:0] fill_comb;
@@ -112,21 +103,8 @@ module fifo # (
 	logic [DEPTHBITS-1:0] endIndex_reg;
 	logic [DEPTHBITS-1:0] beginIndex_comb;
 	logic [DEPTHBITS-1:0] beginIndex_reg;
-	logic [DEPTHBITS-1:0] next_comb;
-	logic [DEPTHBITS-1:0] next_reg;
-	logic [DEPTHBITS-1:0] nextCorrected_comb;
-	
-	logic wasEmpty;
-	
-	generate
-	if(FIRSTWORD_FALLTHROUGH) begin
-		assign wasEmpty = 0;
-	end else begin
-		//always_ff @(posedge clk) begin
-		assign wasEmpty = link.fillStatus.empty;
-		//end
-	end
-	endgenerate
+	logic [DEPTHBITS-1:0] current_comb;
+	logic [DEPTHBITS-1:0] current_reg;
 
 	assign link.fillLevel = fill_reg;
 	
@@ -140,39 +118,28 @@ module fifo # (
 		end else if(link.read && !link.write && fill_reg != 0 && !circular) begin
 			fill_comb = fill_reg - 1;
 		end
-		/* Bad for timing
-		unique casez({link.read, link.write, circular, fill_reg != 0, fill_reg != DEPTH})
-			5'b01??1, 5'b?11?1:
-				fill_comb = fill_reg + 1;
-			5'b1001?:
-				fill_comb = fill_reg - 1;
-			default:
-				fill_comb = fill_reg;
-		endcase */
 		
 		//TODO: overwrite fill_comb with reset here? => would allow us to simblify the valid/full/almost_full/... generation by combine general and reset case there...
 	end
 
 	always_comb begin : READ
+		logic [DEPTHBITS-1:0] nextIndex = current_reg + 1; 
+		
 		beginIndex_comb = beginIndex_reg;
+		current_comb    = current_reg;
 		
 		if(link.read && (fill_reg || link.write) && !reset) begin
+			current_comb      = current_reg + 1;
 			
-			if(!circular) begin
+			if(circular) begin
+				if(nextIndex == endIndex_reg) begin
+					current_comb = beginIndex_reg;
+				end
+			end else begin
 				beginIndex_comb = beginIndex_reg + 1;
 			end
 			
 		end
-		
-		if(link.read && (fill_reg || link.write)) begin
-			next_comb = next_reg + 1;
-		end else begin
-			next_comb = next_reg;
-		end
-		
-		/*if(circular && next_comb == endIndex_reg) begin //write read might screw this over...
-			next_comb = beginIndex_reg;
-		end*/
 	end
 
 	always_comb begin : WRITE
@@ -187,54 +154,54 @@ module fifo # (
 		if(reset) begin
 			endIndex_reg          <= 0;
 			beginIndex_reg        <= 0;
-			next_reg              <= FIRSTWORD_FALLTHROUGH?1:0;
+			current_reg           <= 0;
 			fill_reg              <= 0;
 		end else begin
 			if(link.write) begin
-				if(DEPTH > 1) begin
-					memory[endIndex_reg] <= link.datain;
-				end else begin
-					memoryRegister       <= link.datain;
-				end
+				memory[endIndex_reg] <= link.datain;
 			end
 			
 			endIndex_reg   <= endIndex_comb;
 			beginIndex_reg <= beginIndex_comb;
-			next_reg       <= next_comb;
 			fill_reg       <= fill_comb;
+			current_reg    <= current_comb;
 		end
 	end
 	
-	generate
-	if(DEPTH>1) begin
-		always_comb begin
-			if(circular && next_reg == endIndex_reg) begin //write read might screw this over by one missed loop...
-				nextCorrected_comb = beginIndex_reg;
+	generate if(DEPTH>1) begin
+		always_ff @(posedge clk) begin : DATAOUT_REGISTER
+			if(fill_reg[$left(fill_reg):1]==0 && (!fill_reg[0] || link.read) && FIRSTWORD_FALLTHROUGH) begin //first word fall through
+				link.dataout <= link.datain;
 			end else begin
-				nextCorrected_comb = next_reg;
-			end
-		end
-		
-		always_ff @(posedge clk) begin : DATAOUT_REGISTER	
-			if(FIRSTWORD_FALLTHROUGH) begin
-				if(fill_reg[$left(fill_reg):1]==0 && (!fill_reg[0] || link.read)) begin //first word fall through
-					//FIXME: stop toggling of data if there is no write
-					link.dataout <= link.datain;
-				end else if(link.read) begin
-					link.dataout <= memory[nextCorrected_comb];
-				end
-			end else begin
-				//FIXME: does not work for circular mode, with this we do not need nextCOrrected
-				link.dataout <= memory[beginIndex_comb];
+				link.dataout <= memory[current_comb];
 			end
 		end
 	end else begin
+		logic [WIDTH-1:0] fifo_reg;
+		
 		always_ff @(posedge clk) begin : DATAOUT_REGISTER
+			//Comment Out: preperation for non power of two fifo
+			//if(!(DEPTH&(DEPTH-1))) begin
+				logic [DEPTHBITS-1:0] preloadIndex = current_comb + 1;
+			
+				if(circular && preloadIndex == endIndex_reg) begin
+					preloadIndex = beginIndex_reg;
+				end
+			
+				fifo_reg <= memory[preloadIndex];
+			/*end else begin
+				if(current_comb+1 == DEPTH) begin
+					fifo_reg <= memory[0];
+				end else begin
+					fifo_reg <= memory[current_comb+1];
+				end
+			end*/
+			
 			if(link.read) begin
 				if(!fill_reg && FIRSTWORD_FALLTHROUGH) begin //first word fall through
 					link.dataout <= link.datain;
 				end else begin
-					link.dataout <= memoryRegister;
+					link.dataout <= fifo_reg; //memory[current_comb];
 				end
 			end
 		end
@@ -246,7 +213,7 @@ module fifo # (
 			if(reset) begin
 				link.fillStatus.valid <= 0;
 			end else begin
-				link.fillStatus.valid <= (fill_comb || link.write) && !wasEmpty;
+				link.fillStatus.valid <= fill_comb || link.write;
 			end
 		end
 	end else begin
@@ -254,7 +221,7 @@ module fifo # (
 	end
 	endgenerate
 	
-	generate if(OUTPUTS & FIFO_EMPTY || !FIRSTWORD_FALLTHROUGH) begin
+	generate if(OUTPUTS & FIFO_EMPTY) begin
 		always_ff @(posedge clk) begin : EMPTY
 			if(reset) begin
 				link.fillStatus.empty <= 1;
@@ -303,32 +270,6 @@ module fifo # (
 		end
 	end else begin
 		assign link.fillStatus.almostFull = 0;
-	end
-	endgenerate
-	
-	generate if(OUTPUTS & FIFO_WRAP_INDICATOR) begin
-		always_ff @(posedge clk) begin : WRAP
-			if(reset) begin
-				link.fillStatus.wrap <= 0;
-			end else begin
-				link.fillStatus.wrap <= (circular && next_reg == endIndex_reg) || (!circular && next_reg == 0);
-			end
-		end
-	end else begin
-		assign link.fillStatus.wrap = 0;
-	end
-	endgenerate
-	
-	generate if(OUTPUTS & FIFO_CIRCULAR_HALFWAY) begin
-		always_ff @(posedge clk) begin : WRAP
-			if(reset) begin
-				link.fillStatus.circularHalfway <= 0;
-			end else begin
-				link.fillStatus.circularHalfway <= nextCorrected_comb == beginIndex_reg + CIRCULAR_HALFWAY;
-			end
-		end
-	end else begin
-		assign link.fillStatus.circularHalfway = 0;
 	end
 	endgenerate
 
